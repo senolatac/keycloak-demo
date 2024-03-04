@@ -1,0 +1,164 @@
+version: "3.9"
+services:
+
+#  consul:
+#    container_name: consul
+#    image: docker.io/bitnami/consul:1
+#    volumes:
+#      - consul_data:/bitnami/consul
+#    ports:
+#      - '8300:8300'
+#      - '8301:8301'
+#      - '8301:8301/udp'
+#      - '8500:8500'
+#      - '8600:8600'
+#      - '8600:8600/udp'
+#    networks:
+#      - local
+#
+#  mailhog:
+#    container_name: mailhog
+#    image: mailhog/mailhog
+#    ports:
+#      - "1025:1025" #SMTP Port
+#      - "8025:8025" #HTTP Server Port
+#    networks:
+#      - local
+#
+
+  simulation-apps:
+    container_name: simulation-apps
+    image: simulation-apps:latest
+    restart: always
+    ports:
+      - "8081:8081"
+    networks:
+      - yeap
+
+
+  keycloak:
+    container_name: keycloak
+    image: quay.io/keycloak/keycloak:23.0.4
+    command: ['start-dev']
+    environment:
+      KC_HEALTH_ENABLED: 'true'
+      KC_HTTP_ENABLED: 'true'
+      KC_METRICS_ENABLED: 'true'
+      # KC_HOSTNAME: keycloak.com.au
+      # KC_HOSTNAME_PORT: 8180
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+    volumes:
+      - ${H2_VOLUME_PATH}:/opt/keycloak/data/
+      # - ./keycloak_theme/nar:/opt/keycloak/themes/my-first-theme
+      # - ./keycloak_theme/nar:/opt/keycloak/providers
+    ports:
+      - "8080:8080"
+    networks:
+      - yeap
+
+  dashboard:
+    container_name: apisix-dashboard
+    image: apache/apisix-dashboard:${APISIX_DASHBOARD_VERSION:-3.0.1-centos}
+    restart: always
+    volumes:
+      - ${APISIX_DASHBOARD_CONFIG}:/usr/local/apisix-dashboard/conf/conf.yaml:ro
+    depends_on:
+      - apisix
+    ports:
+      - "9000:9000/tcp"
+    networks:
+      - yeap
+
+  apisix:
+    container_name: apisix
+    image: apache/apisix:${APISIX_IMAGE_TAG:-3.6.0-debian}
+    restart: always
+    volumes:
+      - ${APISIX_CONFIG}:/usr/local/apisix/conf/config.yaml:ro
+    depends_on:
+      - etcd
+    ##network_mode: host
+    ports:
+      - "9180:9180/tcp"
+      - "9080:9080/tcp"
+      - "9091:9091/tcp"
+      - "9443:9443/tcp"
+      - "9092:9092/tcp"
+    networks:
+      - yeap
+
+  etcd:
+    container_name: etcd
+    image: bitnami/etcd:3.4.15
+    restart: always
+    volumes:
+      - etcd_data:/bitnami/etcd
+    environment:
+      ETCD_ENABLE_V2: "true"
+      ALLOW_NONE_AUTHENTICATION: "yes"
+      ETCD_ADVERTISE_CLIENT_URLS: "http://etcd:2379"
+      ETCD_LISTEN_CLIENT_URLS: "http://0.0.0.0:2379"
+    ports:
+      - "2379:2379/tcp"
+    networks:
+      - yeap
+
+#  web1:
+#    container_name: web1
+#    image: nginx:1.19.0-alpine
+#    restart: always
+#    volumes:
+#      - ${WEB1_CONFIG}:/etc/nginx/nginx.conf
+##    ports:
+##      - "9081:80/tcp"
+#    environment:
+#      - NGINX_PORT=80
+#    network_mode: host
+#
+#  web2:
+#    container_name: web2
+#    image: nginx:1.19.0-alpine
+#    restart: always
+#    volumes:
+#      - ${WEB2_CONFIG}:/etc/nginx/nginx.conf
+##    ports:
+##      - "9082:80/tcp"
+#    environment:
+#      - NGINX_PORT=80
+#    network_mode: host
+
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:v2.25.0
+    restart: always
+    volumes:
+      - ${PROMETHEUS_CONFIG}:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - yeap
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:7.3.7
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - ${GRAFANA_PROVISION}:/etc/grafana/provisioning
+      - ${GRAFANA_DASHBOARD}:/var/lib/grafana/dashboards
+      - ${GRAFANA_CONFIG}:/etc/grafana/grafana.ini
+    networks:
+      - yeap
+
+networks:
+  yeap:
+    name: yeap
+    driver: bridge
+
+volumes:
+  etcd_data:
+    driver: local
+  consul_data:
+    driver: local

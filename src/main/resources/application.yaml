@@ -1,0 +1,42 @@
+server:
+  port: 8081
+spring:
+  cloud:
+    consul:
+      discovery:
+        instance-id: keycloak-demo
+      host: localhost
+      port: 8500
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driverClassName: org.h2.Driver
+    username: sa
+    password: password
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/nar-demo
+          jwk-set-uri: ${spring.security.oauth2.resourceserver.jwt.issuer-uri}/protocol/openid-connect/certs
+springdoc:
+  swagger-ui:
+    oauth:
+      client-id: demo-rest-api
+      client-secret: iR7SHkREav9ZoosBbqvo0aIEvFuZtULI
+keycloak:
+  realm: nar-demo
+  auth-server-url: http://localhost:8080 # KeyCloak base url
+  ssl-required: external
+  resource: demo-rest-api # ClientId
+  credentials:
+    secret: iR7SHkREav9ZoosBbqvo0aIEvFuZtULI
+  use-resource-role-mappings: true
+  client:
+    realm: nar-demo
+    server-url: http://localhost:8080
+    client-id: admin-cli
+    grant-type: password
+    name: demo_admin
+    password: demo_admin
